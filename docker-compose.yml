@@ -1,6 +1,6 @@
 services:
   postgresql:
-    image: 'postgres:13.1-alpine'
+    image: 'postgres:16'
     container_name: cipher_chat
     ports:
       - 5432:5432
@@ -8,6 +8,18 @@ services:
       - POSTGRES_DB=cipher_chat
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+    volumes:
+      - /D/PostgreSQL:/var/lib/postgresql/data/
+  pgadmin4:
+    container_name: pgadmin4
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: zhuraev2003@bk.ru
+      PGADMIN_DEFAULT_PASSWORD: pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgresql
   zookeeper:
     image: public.ecr.aws/bitnami/zookeeper:3.9
     ports:
