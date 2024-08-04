@@ -1,6 +1,7 @@
 package mai.cryptography.cw.ChatCryptography.service;
 
 import com.vaadin.flow.server.VaadinSession;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.model.repository.UserRepository;
@@ -19,6 +20,7 @@ public class RegisterService {
         }
     }
 
+    @Transactional
     public User registration(String username, String password) throws Exception {
         Optional<User> possibleUser = userRepository.findByUsername(username);
 
@@ -36,6 +38,7 @@ public class RegisterService {
         return user;
     }
 
+    @Transactional
     public User login(String username, String password) throws Exception {
         Optional<User> possibleUser = userRepository.findByUsername(username);
 

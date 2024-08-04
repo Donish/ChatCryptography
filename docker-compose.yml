@@ -5,8 +5,9 @@ services:
     ports:
       - 5432:5432
     environment:
+      - POSTGRES_DB=cipher_chat
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=111
+      - POSTGRES_PASSWORD=postgres
   zookeeper:
     image: public.ecr.aws/bitnami/zookeeper:3.9
     ports:
