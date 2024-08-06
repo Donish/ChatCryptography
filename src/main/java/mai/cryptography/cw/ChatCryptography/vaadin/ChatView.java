@@ -37,7 +37,6 @@ import org.springframework.web.client.RestTemplate;
 @Route(value = "chat-view/:dialogId", layout = MainLayout.class)
 public class ChatView extends Composite<VerticalLayout> implements BeforeEnterObserver {
 
-
     private static final ZoneId MOSCOW_ZONE = ZoneId.of("Europe/Moscow");
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 

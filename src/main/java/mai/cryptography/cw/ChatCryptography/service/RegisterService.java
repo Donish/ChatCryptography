@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.model.repository.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -13,6 +14,7 @@ import java.util.Optional;
 @AllArgsConstructor
 public class RegisterService {
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     public static class RegisterException extends Exception {
         public RegisterException(String message) {
@@ -30,7 +32,7 @@ public class RegisterService {
 
         User user = User.builder()
                 .username(username)
-                .password(password)
+                .password(bCryptPasswordEncoder.encode(password))
                 .build();
 
         userRepository.save(user);
@@ -44,7 +46,7 @@ public class RegisterService {
 
         if (possibleUser.isPresent()) {
             User user = possibleUser.get();
-            if (user.getPassword().equals(password)) {
+            if (bCryptPasswordEncoder.matches(password, user.getPassword())) {
                 VaadinSession.getCurrent().setAttribute(User.class, user);
                 return user;
             }

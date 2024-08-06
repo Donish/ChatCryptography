@@ -6,7 +6,6 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteParameters;
 
 import java.util.UUID;
 
@@ -16,6 +15,7 @@ public class DialogView extends VerticalLayout {
 
     public DialogView() {
         TextField dialogIdField = new TextField("Enter dialog ID to join");
+
         Button createButton = new Button("Create new dialog", event -> {
             String dialogId = UUID.randomUUID().toString();
             Notification.show("Dialog created with ID: " + dialogId);
