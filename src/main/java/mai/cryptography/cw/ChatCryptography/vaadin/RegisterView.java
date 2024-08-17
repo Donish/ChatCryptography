@@ -7,6 +7,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.router.RouteParameters;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.service.RegisterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,10 +47,13 @@ public class RegisterView extends VerticalLayout {
                 User user;
                 try {
                     user = this.registerService.registration(username, password);
-                    // TODO: add username check
-                    // TODO: navigate to chat
-                } catch (Exception e) {
+                    getUI().ifPresent(ui -> ui.navigate(UserView.class, new RouteParameters("userId", String.valueOf(user.getId()))));
+                } catch (RegisterService.RegisterException e) {
                     Notification.show("User already exists!");
+                } catch (IllegalArgumentException e) {
+                    Notification.show("Username must contain only numbers, letters and must not contain more than 20 characters");
+                } catch (Exception e) {
+                    throw new RuntimeException(e.getMessage());
                 }
             }
         });

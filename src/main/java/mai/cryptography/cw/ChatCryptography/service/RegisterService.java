@@ -5,9 +5,11 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.model.repository.UserRepository;
+import org.hibernate.Hibernate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Optional;
 
 @Service
@@ -26,6 +28,9 @@ public class RegisterService {
     public User registration(String username, String password) throws Exception {
         Optional<User> possibleUser = userRepository.findByUsername(username);
 
+        if (!validateUsername(username)) {
+            throw new IllegalArgumentException("Passed invalid username");
+        }
         if (possibleUser.isPresent()) {
             throw new RegisterException("User already exists");
         }
@@ -34,6 +39,7 @@ public class RegisterService {
                 .username(username)
                 .password(bCryptPasswordEncoder.encode(password))
                 .build();
+
 
         userRepository.save(user);
         VaadinSession.getCurrent().setAttribute(User.class, user);
@@ -53,5 +59,9 @@ public class RegisterService {
         }
 
         throw new RegisterException("User not found");
+    }
+
+    private boolean validateUsername(String username) {
+        return username.matches("\\w+") && username.length() <= 20;
     }
 }

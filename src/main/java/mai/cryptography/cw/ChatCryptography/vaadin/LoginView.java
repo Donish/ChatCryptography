@@ -8,6 +8,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteParameters;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.service.RegisterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +47,7 @@ public class LoginView extends VerticalLayout {
                 User user;
                 try {
                     user = this.registerService.login(username, password);
-                    // TODO: navigate to chat
+                    getUI().ifPresent(ui -> ui.navigate(UserView.class, new RouteParameters("userId", String.valueOf(user.getId()))));
                 } catch (Exception e) {
                     Notification.show("Wrong username or password");
                 }

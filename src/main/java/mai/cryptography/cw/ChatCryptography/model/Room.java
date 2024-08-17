@@ -34,4 +34,9 @@ public class Room {
     @NotNull
     @EqualsAndHashCode.Include
     private Long secondUser;
+
+    @Embedded
+    @NotNull
+    @EqualsAndHashCode.Include
+    private RoomCipherParams roomCipherParams;
 }
