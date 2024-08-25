@@ -5,6 +5,7 @@ import mai.cryptography.cw.ChatCryptography.model.Room;
 import mai.cryptography.cw.ChatCryptography.model.RoomCipherParams;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.model.repository.RoomRepository;
+import mai.cryptography.cw.ChatCryptography.model.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,10 +15,10 @@ import java.util.Optional;
 @AllArgsConstructor
 public class RoomService {
     private RoomRepository roomRepository;
+    private UserRepository userRepository;
 
-    public Room createRoom(
+    public void createRoom(
             long userId,
-            long secondUserId,
             String roomName,
             String algorithm,
             String cipherMode,
@@ -37,12 +38,14 @@ public class RoomService {
         Room room = Room.builder()
                 .roomName(roomName)
                 .creatorUser(userId)
-                .secondUser(secondUserId)
                 .roomCipherParams(roomCipherParams)
                 .build();
 
         roomRepository.save(room);
-        return room;
+    }
+
+    public List<Room> getAllRooms() {
+        return roomRepository.findAll();
     }
 
     public void deleteRoom(Long id) {
@@ -63,5 +66,19 @@ public class RoomService {
 
     public boolean existsByRoomName(String roomName) {
         return roomRepository.existsByRoomName(roomName);
+    }
+
+    public void addUserToRoom(User user, Room room) {
+        room.getUsers().add(user);
+        roomRepository.save(room);
+    }
+
+    public boolean removeUserFromRoom(User user, Room room) {
+        if (room.getUsers().contains(user)) {
+            room.getUsers().remove(user);
+            roomRepository.save(room);
+            return true;
+        }
+        return false;
     }
 }

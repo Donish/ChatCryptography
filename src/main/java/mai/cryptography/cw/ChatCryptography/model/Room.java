@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Data
 @Builder
@@ -30,13 +33,16 @@ public class Room {
     @EqualsAndHashCode.Include
     private Long creatorUser;
 
-    @Column(name = "second_user")
-    @NotNull
-    @EqualsAndHashCode.Include
-    private Long secondUser;
-
     @Embedded
     @NotNull
     @EqualsAndHashCode.Include
     private RoomCipherParams roomCipherParams;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_room",
+            joinColumns = @JoinColumn(name = "room_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> users = new HashSet<>();
 }

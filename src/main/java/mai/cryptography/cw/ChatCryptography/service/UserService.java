@@ -1,6 +1,7 @@
 package mai.cryptography.cw.ChatCryptography.service;
 
 import lombok.AllArgsConstructor;
+import mai.cryptography.cw.ChatCryptography.model.Room;
 import mai.cryptography.cw.ChatCryptography.model.User;
 import mai.cryptography.cw.ChatCryptography.model.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,18 @@ public class UserService {
         return userRepository.findByUsername(username);
     }
 
-    public List<Long> getRooms(Long id) {
-        return userRepository.getAllRooms(id);
+    public void addRoomToUser(User user, Room room) {
+        user.getRooms().add(room);
+        userRepository.save(user);
     }
+
+    public boolean removeRoomFromUser(User user, Room room) {
+        if (user.getRooms().contains(room)) {
+            user.getRooms().remove(room);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
 }

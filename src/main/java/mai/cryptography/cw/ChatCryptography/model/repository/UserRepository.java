@@ -1,7 +1,6 @@
 package mai.cryptography.cw.ChatCryptography.model.repository;
 
 import mai.cryptography.cw.ChatCryptography.model.User;
-import org.hibernate.Hibernate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -17,6 +16,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.username FROM User u")
     List<String> findAllUsernames();
 
-    @Query("SELECT u FROM User u JOIN FETCH u.rooms WHERE u.id = :id")
-    List<Long> getAllRooms(Long id);
 }
