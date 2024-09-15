@@ -4,6 +4,7 @@ import mai.cryptography.cw.ChatCryptography.crypto.interfaces.ICipherConversion;
 import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 
 public class MARSConversion implements ICipherConversion {
+
     @Override
     public byte[] convert(byte[] block, byte[] roundKey) {
         int firstKey = BitUtils.byteArrToInt(roundKey, 0);

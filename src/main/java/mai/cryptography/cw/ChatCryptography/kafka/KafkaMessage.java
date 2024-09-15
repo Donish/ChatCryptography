@@ -1,7 +1,7 @@
 package mai.cryptography.cw.ChatCryptography.kafka;
 
-import com.nimbusds.jose.shaded.gson.Gson;
-import com.nimbusds.jose.shaded.gson.GsonBuilder;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public record KafkaMessage(Action action, Object message) {
 
@@ -10,7 +10,8 @@ public record KafkaMessage(Action action, Object message) {
         EXCHANGE_KEYS,
         TEXT_MESSAGE,
         FILE_MESSAGE,
-        DISCONNECT
+        DISCONNECT,
+        CLEAR
     }
 
     private static final Gson gson = new GsonBuilder()

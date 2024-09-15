@@ -1,5 +1,6 @@
 package mai.cryptography.cw.ChatCryptography.crypto.utils;
 
+import java.security.SecureRandom;
 import java.util.Arrays;
 
 public class BitUtils {
@@ -176,5 +177,11 @@ public class BitUtils {
         }
 
         return array;
+    }
+
+    public static byte[] generateIV(int byteSize) {
+        byte[] result = new byte[byteSize];
+        (new SecureRandom()).nextBytes(result);
+        return result;
     }
 }

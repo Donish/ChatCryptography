@@ -1,31 +1,33 @@
 package mai.cryptography.cw.ChatCryptography.crypto.MARS;
 
-import mai.cryptography.cw.ChatCryptography.crypto.interfaces.IAlgorithm;
 import mai.cryptography.cw.ChatCryptography.crypto.interfaces.ICipher;
 
-public class MARS implements IAlgorithm {
+public class MARS implements ICipher {
 
     private final ICipher feistelNetwork;
 
-    public MARS(byte[] key) {
-        this.feistelNetwork = new Type3FeistelNetwork(key, new MARSConversion(), new MARSKeyGenerator());
+    public MARS() {
+        this.feistelNetwork = new Type3FeistelNetwork(new MARSConversion(), new MARSKeyGenerator());
+    }
+
+
+    @Override
+    public byte[] encrypt(byte[] text) {
+        return feistelNetwork.encrypt(text);
     }
 
     @Override
-    public byte[] encryptBlock(byte[] block) {
-        return feistelNetwork.encrypt(block);
+    public byte[] decrypt(byte[] text) {
+        return feistelNetwork.decrypt(text);
     }
 
     @Override
-    public byte[] decryptBlock(byte[] block) {
-        return feistelNetwork.decrypt(block);
-    }
-
     public void setRKeys(byte[] key) {
         feistelNetwork.setRKeys(key);
     }
 
+    @Override
     public int getBlockLength() {
-        return 16;
+        return feistelNetwork.getBlockLength();
     }
 }

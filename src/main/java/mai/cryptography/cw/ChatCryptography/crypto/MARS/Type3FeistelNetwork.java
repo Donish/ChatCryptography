@@ -5,8 +5,6 @@ import mai.cryptography.cw.ChatCryptography.crypto.interfaces.ICipherConversion;
 import mai.cryptography.cw.ChatCryptography.crypto.interfaces.IRoundKeyGenerator;
 import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 
-import java.util.List;
-
 public class Type3FeistelNetwork implements ICipher {
 
     public static final int[] S =
@@ -70,23 +68,21 @@ public class Type3FeistelNetwork implements ICipher {
                     0xa4a8d57b, 0x5b5d193b, 0xc8a8309b, 0x73f9a978
             };
 
-    protected final ICipherConversion conversionFunc;
-    protected final IRoundKeyGenerator keyGenerator;
-    protected int[] RKeys;
+    private final IRoundKeyGenerator roundKeyGenerator;
+    private final ICipherConversion cipherConversion;
+    private int[] roundKeys;
 
-    public Type3FeistelNetwork(byte[] key, ICipherConversion conversionFunc, IRoundKeyGenerator keyGenerator) {
-        this.conversionFunc = conversionFunc;
-        this.keyGenerator = keyGenerator;
-        setRKeys(key);
+    public Type3FeistelNetwork(ICipherConversion cipherConversion, IRoundKeyGenerator keyGenerator) {
+        this.cipherConversion = cipherConversion;
+        this.roundKeyGenerator = keyGenerator;
     }
-
 
     @Override
     public byte[] encrypt(byte[] text) {
-        int A = BitUtils.byteArrToInt(text, 0) + RKeys[0];
-        int B = BitUtils.byteArrToInt(text, 4) + RKeys[1];
-        int C = BitUtils.byteArrToInt(text, 8) + RKeys[2];
-        int D = BitUtils.byteArrToInt(text, 12) + RKeys[3];
+        int A = BitUtils.byteArrToInt(text, 0) + roundKeys[0];
+        int B = BitUtils.byteArrToInt(text, 4) + roundKeys[1];
+        int C = BitUtils.byteArrToInt(text, 8) + roundKeys[2];
+        int D = BitUtils.byteArrToInt(text, 12) + roundKeys[3];
 
         for (int i = 0; i < 8; i++) {
             B = (B ^ S[A & 0xFF]) + S[BitUtils.rCircularShift(A, 8) & 0xFF + 256];
@@ -110,10 +106,10 @@ public class Type3FeistelNetwork implements ICipher {
 
         for (int i = 0; i < 16; i++) {
             block[0] = A;
-            roundKey[0] = RKeys[2 * i + 4];
-            roundKey[1] = RKeys[2 * i + 5];
+            roundKey[0] = roundKeys[2 * i + 4];
+            roundKey[1] = roundKeys[2 * i + 5];
 
-            byte[] data = conversionFunc.convert(BitUtils.intArrToByteArr(block), BitUtils.intArrToByteArr(roundKey));
+            byte[] data = cipherConversion.convert(BitUtils.intArrToByteArr(block), BitUtils.intArrToByteArr(roundKey));
             L = BitUtils.byteArrToInt(data, 0);
             M = BitUtils.byteArrToInt(data, 4);
             R = BitUtils.byteArrToInt(data, 8);
@@ -150,10 +146,10 @@ public class Type3FeistelNetwork implements ICipher {
         }
 
         int[] data = new int[4];
-        data[0] = A - RKeys[36];
-        data[1] = B - RKeys[37];
-        data[2] = C - RKeys[38];
-        data[3] = D - RKeys[39];
+        data[0] = A - roundKeys[36];
+        data[1] = B - roundKeys[37];
+        data[2] = C - roundKeys[38];
+        data[3] = D - roundKeys[39];
         byte[] encrypted = new byte[text.length];
         for (int i = 0; i < text.length; i++) {
             encrypted[i] = (byte) (data[i / 4] >>> ((i % 4) * 8) & 0xFF);
@@ -164,10 +160,10 @@ public class Type3FeistelNetwork implements ICipher {
 
     @Override
     public byte[] decrypt(byte[] text) {
-        int A = BitUtils.byteArrToInt(text, 0) + RKeys[36];
-        int B = BitUtils.byteArrToInt(text, 4) + RKeys[37];
-        int C = BitUtils.byteArrToInt(text, 8) + RKeys[38];
-        int D = BitUtils.byteArrToInt(text, 12) + RKeys[39];
+        int A = BitUtils.byteArrToInt(text, 0) + roundKeys[36];
+        int B = BitUtils.byteArrToInt(text, 4) + roundKeys[37];
+        int C = BitUtils.byteArrToInt(text, 8) + roundKeys[38];
+        int D = BitUtils.byteArrToInt(text, 12) + roundKeys[39];
 
         for (int i = 7; i >= 0; i--) {
             int tmp = BitUtils.rCircularShift(D, 24);
@@ -199,10 +195,10 @@ public class Type3FeistelNetwork implements ICipher {
             A = tmp;
 
             block[0] = A;
-            roundKey[0] = RKeys[2 * i + 4];
-            roundKey[1] = RKeys[2 * i + 5];
+            roundKey[0] = roundKeys[2 * i + 4];
+            roundKey[1] = roundKeys[2 * i + 5];
 
-            byte[] data = conversionFunc.convert(BitUtils.intArrToByteArr(block), BitUtils.intArrToByteArr(roundKey));
+            byte[] data = cipherConversion.convert(BitUtils.intArrToByteArr(block), BitUtils.intArrToByteArr(roundKey));
             L = BitUtils.byteArrToInt(data, 0);
             M = BitUtils.byteArrToInt(data, 4);
             R = BitUtils.byteArrToInt(data, 8);
@@ -237,10 +233,10 @@ public class Type3FeistelNetwork implements ICipher {
         }
 
         int[] data = new int[4];
-        data[0] = A - RKeys[0];
-        data[1] = B - RKeys[1];
-        data[2] = C - RKeys[2];
-        data[3] = D - RKeys[3];
+        data[0] = A - roundKeys[0];
+        data[1] = B - roundKeys[1];
+        data[2] = C - roundKeys[2];
+        data[3] = D - roundKeys[3];
 
         byte[] decrypted = new byte[text.length];
         for (int i = 0; i < text.length; i++) {
@@ -252,11 +248,16 @@ public class Type3FeistelNetwork implements ICipher {
 
     @Override
     public void setRKeys(byte[] key) {
-        byte[][] keys = keyGenerator.generateRKeys(key);
-        this.RKeys = new int[keys.length];
+        byte[][] keys = roundKeyGenerator.generateRKeys(key);
+        this.roundKeys = new int[keys.length];
 
         for (int i = 0; i < keys.length; i++) {
-            this.RKeys[i] = BitUtils.byteArrToInt(keys[i], 0);
+            this.roundKeys[i] = BitUtils.byteArrToInt(keys[i], 0);
         }
+    }
+
+    @Override
+    public int getBlockLength() {
+        return 16;
     }
 }

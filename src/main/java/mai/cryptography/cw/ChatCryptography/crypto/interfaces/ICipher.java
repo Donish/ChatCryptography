@@ -1,7 +1,5 @@
 package mai.cryptography.cw.ChatCryptography.crypto.interfaces;
 
-import java.util.List;
-
 public interface ICipher {
 
     byte[] encrypt(byte[] text);
@@ -10,4 +8,5 @@ public interface ICipher {
 
     void setRKeys(byte[] key);
 
+    int getBlockLength();
 }

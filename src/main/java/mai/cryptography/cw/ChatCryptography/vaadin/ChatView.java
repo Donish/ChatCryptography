@@ -28,12 +28,15 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import com.vaadin.flow.server.Command;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.component.html.*;
 
+import mai.cryptography.cw.ChatCryptography.crypto.CipherFactory;
 import mai.cryptography.cw.ChatCryptography.crypto.CipherService;
+import mai.cryptography.cw.ChatCryptography.crypto.DiffieHellmanProtocol;
 import mai.cryptography.cw.ChatCryptography.kafka.KafkaMessage;
 import mai.cryptography.cw.ChatCryptography.kafka.KafkaReader;
 import mai.cryptography.cw.ChatCryptography.kafka.KafkaWriter;
@@ -119,7 +122,7 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
         kafkaReader.stop();
 
         if (outputTopic != null) {
-            KafkaMessage kafkaMessage = new KafkaMessage(KafkaMessage.Action.DISCONNECT, new byte[0]);
+            KafkaMessage kafkaMessage = new KafkaMessage(KafkaMessage.Action.CLEAR, new byte[0]);
             kafkaWriter.write(kafkaMessage.toBytes(), outputTopic);
         }
 
@@ -130,7 +133,9 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
                 }
             }
 
-            // TODO: close cipher service
+            if (backend.cipherService != null) {
+                backend.cipherService.close();
+            }
 
         }
 
@@ -277,7 +282,7 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
                 messageContent.setSpacing(true);
                 messageContent.getStyle().set("display", "flex").set("alight-items", "flex-end").set("max-width", "100%");
 
-                Span messageSpan = new Span();
+                Span messageSpan = new Span(message);
                 messageSpan.getStyle()
                         .set("font-size", "20px")
                         .set("white-space", "normal")
@@ -318,9 +323,13 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
 
         // TODO: sendFileMessage
 
-        // TODO: clearMessages
+        private void clearChat() {
+            updateUI(this.messages::removeAll);
+        }
 
         // TODO: isImage
+
+        // TODO: getResource
 
         private String getCurrentTime() {
             LocalTime currentTime = LocalTime.now();
@@ -373,7 +382,7 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
 
         private void handleKafkaMessage(ConsumerRecord<byte[], byte[]> consumerRecord) {
             KafkaMessage kafkaMessage = KafkaMessage.toKafkaMessage(new String(consumerRecord.value()));
-
+            System.out.println("MY DEBUG: " + kafkaMessage.action()); // here
             switch (kafkaMessage.action()) {
                 case SETUP_CONNECTION -> {
                     if (kafkaMessage.message() instanceof Long otherUser) {
@@ -403,29 +412,45 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
 
                 //TODO: add metaData action
 
+                case CLEAR -> {
+                    frontend.clearChat();
+                }
+
                 default -> throw new IllegalStateException("Invalid action");
             }
         }
 
         private void exchangeKeys() {
-            privateKey = new byte[0];
-            byte[] publicKey = new byte[0]; // TODO: Diffie-Hellman
+            privateKey = DiffieHellmanProtocol.generateOwnPrivateKey();
+            byte[] publicKey = DiffieHellmanProtocol.generateOwnPublicKey(
+                    privateKey,
+                    cipherParams.getG(),
+                    cipherParams.getP()
+            );
 
             KafkaMessage keyMessage = new KafkaMessage(KafkaMessage.Action.EXCHANGE_KEYS, publicKey);
             kafkaWriter.write(keyMessage.toBytes(), outputTopic);
         }
 
         private void setPrivateKey(byte[] otherPublicKey) {
-            byte[] sharedPrivateKey = new byte[0];
-            // TODO: cipherService
+            byte[] sharedPrivateKey = DiffieHellmanProtocol.generateSharedPrivateKey(
+                    otherPublicKey,
+                    privateKey,
+                    cipherParams.getP()
+            );
+
+            this.cipherService = CipherFactory.createCipherService(cipherParams, sharedPrivateKey);
+
             notifyUser("Connected to user");
         }
 
         private void handleTextMessage(byte[] textMessage) {
-            // TODO: decrypt message
-//            CompletableFuture<byte[]> future = textMessage;
-//            frontend.addTextMessageToUI(otherUser.getUsername(), new String(textMessage), LocalDateTime.now(MOSCOW_ZONE));
-            frontend.showTextMessage(new String(textMessage), Frontend.Destination.CONSUMER);
+            if (cipherService != null) {
+                CompletableFuture<byte[]> decryptedMessageFuture = cipherService.decrypt(textMessage);
+                decryptedMessageFuture.thenAccept(decryptedMessage -> frontend.showTextMessage(new String(decryptedMessage), Frontend.Destination.CONSUMER));
+            } else {
+                notifyUser("Unable to decrypt message");
+            }
         }
 
         private synchronized void handleFileMessage() {
@@ -434,22 +459,24 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
         // TODO: handleMetaData
 
 
-
         private void sendMessage(KafkaMessage.Action action, Object message) {
-            if (outputTopic != null) {
+            if (outputTopic != null && cipherService != null) {
 
-                // TODO: if fileMessage
-                byte[] messageByte;
-                if (message instanceof String) {
-                    messageByte = ((String) message).getBytes();
-                } else {
-                    throw new IllegalStateException("Invalid message type");
-                }
+                byte[] messageByte = switch (message) {
+                    case String textMessage -> textMessage.getBytes();
 
-                // TODO: encrypt message
+                    // TODO: fileMessage and metadata
 
-                KafkaMessage kafkaMessage = new KafkaMessage(action, messageByte);
-                kafkaWriter.write(kafkaMessage.toBytes(), outputTopic);
+                    default -> throw new IllegalStateException("Invalid message type");
+                };
+
+                CompletableFuture<byte[]> encryptedMessageFuture = cipherService.encrypt(messageByte);
+
+                encryptedMessageFuture.thenAccept(encryptedMessage -> {
+                    KafkaMessage kafkaMessage = new KafkaMessage(action, encryptedMessage);
+                    kafkaWriter.write(kafkaMessage.toBytes(), outputTopic);
+                });
+
             } else {
                 notifyUser("Unable to send message");
             }

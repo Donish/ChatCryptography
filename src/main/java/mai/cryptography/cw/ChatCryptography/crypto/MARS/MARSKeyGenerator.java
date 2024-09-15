@@ -3,9 +3,8 @@ package mai.cryptography.cw.ChatCryptography.crypto.MARS;
 import mai.cryptography.cw.ChatCryptography.crypto.interfaces.IRoundKeyGenerator;
 import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 
-import java.util.List;
-
 public class MARSKeyGenerator implements IRoundKeyGenerator {
+
     @Override
     public byte[][] generateRKeys(byte[] key) {
         int n = key.length >> 2;

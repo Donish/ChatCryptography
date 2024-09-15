@@ -1,6 +1,7 @@
 package mai.cryptography.cw.ChatCryptography.service;
 
 import lombok.AllArgsConstructor;
+import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 import mai.cryptography.cw.ChatCryptography.model.Room;
 import mai.cryptography.cw.ChatCryptography.model.RoomCipherParams;
 import mai.cryptography.cw.ChatCryptography.model.User;
@@ -30,7 +31,7 @@ public class RoomService {
                 .algorithm(algorithm)
                 .cipherMode(cipherMode)
                 .padding(padding)
-                .IV(g) // TODO: IV generator
+                .IV(BitUtils.generateIV(16))
                 .g(g)
                 .p(p)
                 .build();

@@ -28,6 +28,14 @@ ext {
 	set('vaadinVersion', "24.3.13")
 }
 
+tasks.withType(JavaCompile).each {
+	it.options.compilerArgs.add('--enable-preview')
+}
+
+test {
+	jvmArgs(['--enable-preview'])
+}
+
 dependencies {
 
 	// vaadin

@@ -1,6 +1,7 @@
 package mai.cryptography.cw.ChatCryptography.service;
 
 import jakarta.transaction.Transactional;
+import mai.cryptography.cw.ChatCryptography.crypto.DiffieHellmanProtocol;
 import mai.cryptography.cw.ChatCryptography.kafka.KafkaMessage;
 import mai.cryptography.cw.ChatCryptography.kafka.KafkaWriter;
 import mai.cryptography.cw.ChatCryptography.model.Room;
@@ -35,9 +36,9 @@ public class ServerService {
             String padding) {
 
         if (!roomService.existsByRoomName(roomName)) {
-            BigInteger[] params = new BigInteger[2]; // TODO: diffie-hellman
-            byte[] g = new byte[1];
-            byte[] p = new byte[1];
+            BigInteger[] params = DiffieHellmanProtocol.generateParameters(32);
+            byte[] g = params[0].toByteArray();
+            byte[] p = params[1].toByteArray();
             roomService.createRoom(userId, roomName, algorithm, cipherMode, padding, g, p);
 
             return true;

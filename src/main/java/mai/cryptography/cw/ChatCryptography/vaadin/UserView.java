@@ -191,11 +191,11 @@ public class UserView extends HorizontalLayout implements BeforeEnterObserver {
 
             Select<String> cipherMode = new Select<>();
             cipherMode.setLabel("Cipher Mode");
-            cipherMode.setItems("ECB", "CBC", "CFB", "PCBC", "OFB", "CTR", "Random Delta");
+            cipherMode.setItems("ECB", "CBC", "CFB", "PCBC", "OFB", "CTR", "RD");
 
             Select<String> padding = new Select<>();
             padding.setLabel("Padding");
-            padding.setItems("Zeros", "ANSI X.923", "PKCS7", "ISO 10126");
+            padding.setItems("Zeros", "ANSI_X_923", "PKCS7", "ISO_10126");
 
             Button createButton = new Button("Create", event -> {
                 if (backend.createRoom(
