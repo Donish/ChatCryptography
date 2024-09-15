@@ -447,7 +447,10 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
         private void handleTextMessage(byte[] textMessage) {
             if (cipherService != null) {
                 CompletableFuture<byte[]> decryptedMessageFuture = cipherService.decrypt(textMessage);
-                decryptedMessageFuture.thenAccept(decryptedMessage -> frontend.showTextMessage(new String(decryptedMessage), Frontend.Destination.CONSUMER));
+                decryptedMessageFuture.thenAccept(decryptedMessage -> {
+                    System.out.println("MY MESSAGE: " + new String(decryptedMessage));
+                    frontend.showTextMessage(new String(decryptedMessage), Frontend.Destination.CONSUMER);
+                });
             } else {
                 notifyUser("Unable to decrypt message");
             }
