@@ -7,29 +7,27 @@ import java.util.Arrays;
 public final class ZerosPadding implements IPadding {
 
     @Override
-    public byte[] makePadding(byte[] text, int requiredSizeInBytes) {
-        byte[] result;
-        boolean isMultiple = text.length % requiredSizeInBytes == 0;
-        if (isMultiple) {
-            result = new byte[text.length + requiredSizeInBytes];
-        } else {
-            result = new byte[text.length + (requiredSizeInBytes - text.length % requiredSizeInBytes)];
-        }
-        System.arraycopy(text, 0, result, 0, text.length);
+    public byte[] makePadding(byte[] data, int blockSize) {
+        int paddingLength = blockSize - (data.length % blockSize);
 
-        return result;
+        byte[] paddedInput = new byte[data.length + paddingLength];
+        System.arraycopy(data, 0, paddedInput, 0, data.length);
+
+        return paddedInput;
     }
 
     @Override
-    public byte[] removePadding(byte[] text) {
-        int idx = 0;
-        for (int i = text.length - 1; i >= 0; i--) {
-            if (text[i] != 0) {
-                idx = i;
+    public byte[] removePadding(byte[] data) {
+        int lastNonZeroIndex = data.length - 1;
+
+        for (int i = data.length - 1; i >= 0; i--) {
+            if (data[i] != 0) {
+                lastNonZeroIndex = i;
                 break;
             }
         }
-        return Arrays.copyOf(text, idx + 1);
+
+        return Arrays.copyOf(data, lastNonZeroIndex + 1);
     }
 
 }

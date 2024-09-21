@@ -10,7 +10,6 @@ public class MARS implements ICipher {
         this.feistelNetwork = new Type3FeistelNetwork(new MARSConversion(), new MARSKeyGenerator());
     }
 
-
     @Override
     public byte[] encrypt(byte[] text) {
         return feistelNetwork.encrypt(text);

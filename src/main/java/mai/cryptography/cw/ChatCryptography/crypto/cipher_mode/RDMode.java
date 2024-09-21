@@ -5,50 +5,61 @@ import mai.cryptography.cw.ChatCryptography.crypto.interfaces.ICipher;
 import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 public final class RDMode extends ACipherMode {
 
+    private final BigInteger delta;
+
     public RDMode(ICipher cipher, byte[] IV, ExecutorService executorService) {
         super(cipher, IV, cipher.getBlockLength(), executorService);
+        delta = new BigInteger(Arrays.copyOf(IV, blockLength / 2));
     }
     
     @Override
-    public byte[] encryptWithMode(byte[] text) {
-        byte[] result = new byte[text.length];
-        BigInteger delta = new BigInteger(Arrays.copyOfRange(IV, IV.length / 2, IV.length));
-        BigInteger initial = new BigInteger(IV);
-
-        IntStream.range(0, text.length / blockLength)
-                .parallel()
-                .forEach(i -> {
-                    int idx = i * blockLength;
-                    byte[] block = Arrays.copyOfRange(text, idx, idx + blockLength);
-                    BigInteger initialDelta = initial.add(delta.multiply(BigInteger.valueOf(i)));
-                    byte[] encryptedBlock = cipher.encrypt(BitUtils.xorArrays(block, initialDelta.toByteArray()));
-                    System.arraycopy(encryptedBlock, 0, result, idx, encryptedBlock.length);
-                });
-
-        return result;
+    public byte[] encryptWithMode(byte[] data) {
+        return process(data, true);
     }
 
     @Override
-    public byte[] decryptWithMode(byte[] cipheredText) {
-        byte[] result = new byte[cipheredText.length];
-        BigInteger delta = new BigInteger(Arrays.copyOfRange(IV, IV.length / 2, IV.length));
-        BigInteger initial = new BigInteger(IV);
+    public byte[] decryptWithMode(byte[] data) {
+        return process(data, false);
+    }
 
-        IntStream.range(0, cipheredText.length / blockLength)
-                .parallel()
-                .forEach(i -> {
-                    int idx = i * blockLength;
-                    byte[] block = Arrays.copyOfRange(cipheredText, idx, idx + blockLength);
-                    BigInteger initialDelta = initial.add(delta.multiply(BigInteger.valueOf(i)));
-                    byte[] decryptedBlock = BitUtils.xorArrays(cipher.decrypt(block), initialDelta.toByteArray());
-                    System.arraycopy(decryptedBlock, 0, result, idx, decryptedBlock.length);
-                });
+    private byte[] process(byte[] data, boolean isEncrypt) {
+        byte[] result = new byte[data.length];
+        BigInteger initialStart = new BigInteger(IV);
+
+        int numBlocks = data.length / blockLength;
+        List<Future<?>> futures = new ArrayList<>(numBlocks);
+
+        for (int i = 0; i < numBlocks; ++i) {
+            final int index = i;
+            futures.add(executorService.submit(() -> {
+                BigInteger initial = initialStart.add(delta.multiply(BigInteger.valueOf(index)));
+                int startIndex = index * blockLength;
+                byte[] block = new byte[blockLength];
+                System.arraycopy(data, startIndex, block, 0, blockLength);
+                byte[] processedBlock = isEncrypt
+                        ? cipher.encrypt(BitUtils.xor(initial.toByteArray(), block))
+                        : BitUtils.xor(cipher.decrypt(block), initial.toByteArray());
+                System.arraycopy(processedBlock, 0, result, startIndex, processedBlock.length);
+            }));
+        }
+
+        for (var future : futures) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         return result;
     }

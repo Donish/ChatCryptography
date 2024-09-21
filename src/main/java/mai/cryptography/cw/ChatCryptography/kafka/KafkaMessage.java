@@ -10,8 +10,8 @@ public record KafkaMessage(Action action, Object message) {
         EXCHANGE_KEYS,
         TEXT_MESSAGE,
         FILE_MESSAGE,
-        DISCONNECT,
-        CLEAR
+        CLEAR,
+        BEGIN_FILE_MESSAGE
     }
 
     private static final Gson gson = new GsonBuilder()

@@ -1,6 +1,5 @@
 package mai.cryptography.cw.ChatCryptography.vaadin;
 
-import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -10,20 +9,16 @@ import com.vaadin.flow.component.contextmenu.SubMenu;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.menubar.MenuBar;
 import com.vaadin.flow.component.messages.MessageInput;
-import com.vaadin.flow.component.messages.MessageList;
-import com.vaadin.flow.component.messages.MessageListItem;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.upload.Upload;
-import com.vaadin.flow.component.upload.UploadI18N;
 import com.vaadin.flow.component.upload.receivers.FileBuffer;
 import com.vaadin.flow.router.*;
 
-import java.io.File;
-import java.io.RandomAccessFile;
-import java.time.LocalDateTime;
+import java.io.*;
+import java.nio.file.Files;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -31,15 +26,14 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import com.vaadin.flow.server.Command;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.component.html.*;
 
 import mai.cryptography.cw.ChatCryptography.crypto.CipherFactory;
 import mai.cryptography.cw.ChatCryptography.crypto.CipherService;
 import mai.cryptography.cw.ChatCryptography.crypto.DiffieHellmanProtocol;
-import mai.cryptography.cw.ChatCryptography.kafka.KafkaMessage;
-import mai.cryptography.cw.ChatCryptography.kafka.KafkaReader;
-import mai.cryptography.cw.ChatCryptography.kafka.KafkaWriter;
+import mai.cryptography.cw.ChatCryptography.kafka.*;
 import mai.cryptography.cw.ChatCryptography.model.Room;
 import mai.cryptography.cw.ChatCryptography.model.RoomCipherParams;
 import mai.cryptography.cw.ChatCryptography.model.User;
@@ -47,7 +41,6 @@ import mai.cryptography.cw.ChatCryptography.service.RoomService;
 import mai.cryptography.cw.ChatCryptography.service.ServerService;
 import mai.cryptography.cw.ChatCryptography.service.UserService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.hibernate.boot.model.naming.IllegalIdentifierException;
 
 @PageTitle("Chat")
 @Route(value = "user/:userId/room/:roomId")
@@ -57,7 +50,6 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private User user;
-//    private User otherUser;
     private Room room;
 
     private RoomCipherParams cipherParams;
@@ -235,6 +227,7 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
 
         private VerticalLayout createMessagesContainer() {
             VerticalLayout messagesContainer = new VerticalLayout();
+            messagesContainer.getStyle().set("overflow-y", "auto");
             messagesContainer.setSizeFull();
             return messagesContainer;
         }
@@ -271,7 +264,7 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
             upload.setAutoUpload(false);
             upload.setDropAllowed(false);
 
-//            upload.addSucceededListener(event -> handleFileMessage(fileBuffer, event.getFileName())); // TODO
+            upload.addSucceededListener(event -> handleFileMessage(fileBuffer, event.getFileName()));
 
             return upload;
         }
@@ -315,21 +308,125 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
             });
         }
 
-        // TODO: showFileMessage
+        private void showFileMessage(File file, String filename, Destination destination) {
+            updateUI(() -> {
+                StreamResource fileResource = getResource(file, filename);
 
-        // TODO: showImageMessage
+                HorizontalLayout messageContent = new HorizontalLayout();
+                messageContent.getStyle()
+                        .set("display", "flex")
+                        .set("align-items", "flex-end")
+                        .set("max-width", "100%");
+                messageContent.setSpacing(true);
 
-        // TODO: handleFileMessage
+                Anchor anchorFile = new Anchor(fileResource, filename);
 
-        // TODO: sendFileMessage
+                anchorFile.getElement().setAttribute("download", true);
+                anchorFile.getStyle()
+                        .set("font-size", "20px")
+                        .set("white-space", "normal")
+                        .set("overflow-wrap", "break-word")
+                        .set("flex-grow", "1")
+                        .set("min-width", "0");
+
+                Span timeSpan = new Span(getCurrentTime());
+                timeSpan.getStyle()
+                        .set("font-size", "12px")
+                        .set("color", "#888")
+                        .set("margin-left", "7px")
+                        .set("flex-shrink", "0");
+
+                messageContent.add(anchorFile, timeSpan);
+
+                Div div = new Div(messageContent);
+
+                div.getStyle()
+                        .set("border-radius", "12px")
+                        .set("padding", "5px")
+                        .set("max-width", "100%")
+                        .set("box-sizing", "border-box");
+
+                if (destination.equals(Destination.PRODUCER)) {
+                    div.getStyle().set("background-color", "lightblue");
+                } else {
+                    div.getStyle().set("background-color", "grey");
+                }
+
+                this.messages.add(div);
+            });
+        }
+
+        private void showImageMessage(File file, String filename) {
+            updateUI(() -> {
+                StreamResource imageResource = getResource(file, filename);
+
+                Image image = new Image(imageResource, "image");
+
+                image.setWidth("420px");
+                image.setHeight("360px");
+                image.getStyle()
+                        .set("border", "1px solid #ccc")
+                        .set("border-radius", "25px");
+
+                Div div = new Div(image);
+
+                this.messages.add(div);
+
+            });
+        }
+
+        private void handleFileMessage(FileBuffer fileBuffer, String filename) {
+            try {
+                File file = fileBuffer.getFileData().getFile();
+                if (isImage(fileBuffer.getFileData().getMimeType())) {
+                    showImageMessage(file, filename);
+                    sendFileMessage(fileBuffer.getInputStream(), FileMessageMetaData.Type.IMAGE, filename, file.length());
+                } else {
+                    showFileMessage(file, filename, Destination.PRODUCER);
+                    sendFileMessage(fileBuffer.getInputStream(), FileMessageMetaData.Type.FILE, filename, file.length());
+                }
+            } catch (IOException e) {
+                notifyUser("Unable to send file");
+            }
+        }
+
+        private void sendFileMessage(InputStream stream, FileMessageMetaData.Type type, String filename, long length) throws IOException {
+            String messageId = UUID.nameUUIDFromBytes(filename.getBytes()).toString();
+
+            backend.sendMessage(KafkaMessage.Action.BEGIN_FILE_MESSAGE, new FileMessageMetaData(messageId, type, filename, length));
+
+            int nRead;
+            long offset = 0;
+            byte[] buffer = new byte[10240];
+
+            while ((nRead = stream.read(buffer, 0, buffer.length)) != -1) {
+                ByteArrayOutputStream data = new ByteArrayOutputStream();
+                data.write(buffer, 0, nRead);
+                data.flush();
+
+                backend.sendMessage(KafkaMessage.Action.FILE_MESSAGE, new FileMessage(messageId, data.toByteArray(), offset));
+                offset += nRead;
+            }
+        }
 
         private void clearChat() {
             updateUI(this.messages::removeAll);
         }
 
-        // TODO: isImage
+        private boolean isImage(String type) {
+            return type.startsWith("image/");
+        }
 
-        // TODO: getResource
+        private StreamResource getResource(File file, String filename) {
+            return new StreamResource(filename, () -> {
+                try {
+                    return new BufferedInputStream(Files.newInputStream(file.toPath()));
+                } catch (IOException e) {
+                    notifyUser("Error getting resource");
+                    return null;
+                }
+            });
+        }
 
         private String getCurrentTime() {
             LocalTime currentTime = LocalTime.now();
@@ -337,35 +434,23 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
             return currentTime.format(formatter);
         }
 
-//        private void sendMessage(String message) {
-//            addTextMessageToUI(user.getUsername(), message, LocalDateTime.now(MOSCOW_ZONE));
-//            backend.sendMessage(KafkaMessage.Action.TEXT_MESSAGE, message);
-//        }
-
-//        private void addTextMessageToUI(String username, String message, LocalDateTime timestamp) {
-//            updateUI(() -> {
-//                MessageListItem messageListItem = new MessageListItem(message, timestamp.atZone(MOSCOW_ZONE).toInstant(), username);
-//                messageListItem.setUserColorIndex(username.hashCode() % 6);
-//                messages.add(messageListItem);
-//                messageList.setItems(messages);
-//            });
-//        }
-
     }
 
     private class Backend {
 
-//        private record FileWrapper(
-//            File file,
-//            RandomAccessFile randomAccessFile,
-//            FileMessageMetaData.Type type,
-//            String filename,
-//            long length) {}
+        private record FileWrapper(
+                File file,
+                RandomAccessFile randomAccessFile,
+                FileMessageMetaData.Type type,
+                String filename,
+                long length
+        ) {
+        }
 
         private CipherService cipherService;
         private byte[] privateKey;
         private long otherUserId;
-//        private final Map<String, FileWrapper> tempFiles = new HashMap<>();
+        private final Map<String, FileWrapper> tempFiles = new HashMap<>();
 
 
         public Backend() {
@@ -406,11 +491,15 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
 
                 case FILE_MESSAGE -> {
                     if (kafkaMessage.message() instanceof byte[] file) {
-                        // TODO: handleFileMessage
+                        handleFileMessage(file);
                     }
                 }
 
-                //TODO: add metaData action
+                case BEGIN_FILE_MESSAGE -> {
+                    if (kafkaMessage.message() instanceof byte[] fileMetadata) {
+                        handleMetadata(fileMetadata);
+                    }
+                }
 
                 case CLEAR -> {
                     frontend.clearChat();
@@ -456,10 +545,65 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
             }
         }
 
-        private synchronized void handleFileMessage() {
+        private synchronized void handleFileMessage(byte[] data) {
+            if (cipherService != null) {
+                CompletableFuture<byte[]> decryptedMessageFuture = cipherService.decrypt(data);
+
+                try {
+                    byte[] decryptedMessage = decryptedMessageFuture.get();
+                    FileMessage message = FileMessage.toMessage(new String(decryptedMessage));
+
+                    FileWrapper fileWrapper = tempFiles.get(message.messageId());
+                    RandomAccessFile randomAccessFile = fileWrapper.randomAccessFile();
+
+                    if (randomAccessFile != null) {
+                        randomAccessFile.seek(message.offset());
+                        randomAccessFile.write(message.data());
+
+                        if (fileWrapper.file().length() == fileWrapper.length()) {
+                            randomAccessFile.close();
+
+                            switch (fileWrapper.type()) {
+                                case IMAGE -> frontend.showImageMessage(fileWrapper.file(), fileWrapper.filename());
+                                case FILE -> frontend.showFileMessage(fileWrapper.file(), fileWrapper.filename(), Frontend.Destination.CONSUMER);
+                                default -> throw new IllegalStateException("Invalid message type");
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                notifyUser("Unable to process message");
+            }
         }
 
-        // TODO: handleMetaData
+        private synchronized void handleMetadata(byte[] data) {
+            if (cipherService != null) {
+                CompletableFuture<byte[]> decryptedMetadataFuture = cipherService.decrypt(data);
+
+                decryptedMetadataFuture.thenAccept(decryptedMetadata -> {
+                    try {
+                        FileMessageMetaData fileMessageMetadata = FileMessageMetaData.toFileMessageMetadata(new String(decryptedMetadata));
+
+                        File tempFile = File.createTempFile(fileMessageMetadata.messageId(), ".tmp");
+                        tempFile.deleteOnExit();
+
+                        RandomAccessFile randomAccessFile = new RandomAccessFile(tempFile, "rw");
+                        tempFiles.put(
+                                fileMessageMetadata.messageId(),
+                                new FileWrapper(
+                                        tempFile,
+                                        randomAccessFile,
+                                        fileMessageMetadata.type(),
+                                        fileMessageMetadata.filename(),
+                                        fileMessageMetadata.length()));
+                    } catch (IOException e) {
+                        notifyUser("Unable to create temporary file");
+                    }
+                });
+            }
+        }
 
 
         private void sendMessage(KafkaMessage.Action action, Object message) {
@@ -468,7 +612,9 @@ public class ChatView extends HorizontalLayout implements BeforeEnterObserver {
                 byte[] messageByte = switch (message) {
                     case String textMessage -> textMessage.getBytes();
 
-                    // TODO: fileMessage and metadata
+                    case FileMessage fileMessage -> fileMessage.toBytes();
+
+                    case FileMessageMetaData fileMessageMetaData -> fileMessageMetaData.toBytes();
 
                     default -> throw new IllegalStateException("Invalid message type");
                 };

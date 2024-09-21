@@ -9,17 +9,20 @@ public class MARSKeyGenerator implements IRoundKeyGenerator {
     public byte[][] generateRKeys(byte[] key) {
         int n = key.length >> 2;
 
-        if (n < 4 || n > 14) throw new IllegalArgumentException("required key length: between 16 and 56 bytes");
+        if (n < 4 || n > 14) {
+            throw new IllegalArgumentException("Key length must be between 16 and 56 bytes");
+        }
 
         int[] T = new int[15];
+
         for (int i = 0; i < n; i++) {
             T[i] = key[i];
         }
         T[n] = n;
 
         int[] K = new int[40];
-        for (int j = 0; j < 4; j++) {
 
+        for (int j = 0; j < 4; j++) {
             for (int i = 0; i < 15; i++) {
                 T[i] ^= (BitUtils.lCircularShift(T[(i + 8) % 15] ^ T[(i + 13) % 15], 3)) ^ (4 * i + j);
             }
@@ -52,9 +55,11 @@ public class MARSKeyGenerator implements IRoundKeyGenerator {
 
     private int genMask(int num) {
         int M;
+
         M = (~num ^ (num >>> 1)) & 0x7fffffff;
         M &= (M >> 1) & (M >> 2);
         M &= (M >> 3) & (M >> 6);
+
         M <<= 1;
         M |= (M << 1);
         M |= (M << 2);

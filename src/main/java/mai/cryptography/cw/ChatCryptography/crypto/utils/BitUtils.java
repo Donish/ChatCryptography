@@ -1,5 +1,7 @@
 package mai.cryptography.cw.ChatCryptography.crypto.utils;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -118,14 +120,8 @@ public class BitUtils {
         return result;
     }
 
-    public static int byteArrToInt(byte[] array, int offset) {
-//        int result = 0;
-//        for (int i = 0; i < 4; i++) {
-//            result <<= 8;
-//            result |= array[i + offset];
-//        }
-//        return result;
-        return ((array[offset++] & 0xff) | ((array[offset++] & 0xff) << 8) | ((array[offset++] & 0xff) << 16) | ((array[offset++] & 0xff) << 24));
+    public static int byteArrToInt(byte[] data, int offset) {
+        return ((data[offset++] & 0xff) | ((data[offset++] & 0xff) << 8) | ((data[offset++] & 0xff) << 16) | ((data[offset++] & 0xff) << 24));
     }
 
     public static byte[] intToByteArr(int num) {
@@ -137,16 +133,26 @@ public class BitUtils {
         return result;
     }
 
-    public static byte[] intArrToByteArr(int[] arr) {
-        byte[] res = new byte[arr.length * 4];
+    public static byte[] intArrToByteArr(int[] data) {
+        byte[] array = new byte[data.length * 4];
 
-        for (int i = 0; i < arr.length; i++) {
+        for (int i = 0; i < data.length; i++) {
             for (int j = 0; j < 4; j++) {
-                res[i * 4 + j] = (byte) ((arr[i] >>> (j * 8)) & 0xff);
+                array[i * 4 + j] = (byte) ((data[i] >>> (j * 8)) & 0xff);
             }
         }
 
-        return res;
+        return array;
+    }
+
+    public static byte[] xor(byte[] a, byte[] b) {
+        var size = Math.min(a.length, b.length);
+
+        var result = new byte[size];
+        for (int i = 0; i < size; i++) {
+            result[i] = (byte) (a[i] ^ b[i]);
+        }
+        return result;
     }
 
     public static int lCircularShift(int num, int count) {
@@ -165,23 +171,42 @@ public class BitUtils {
         return count;
     }
 
-    public static byte[][] intArrTo2ByteArr(int[] arr) {
-        int dataLength = arr.length;
+    public static byte[][] intArrTo2ByteArr(int[] data) {
+        int dataLength = data.length;
         byte[][] array = new byte[dataLength][4];
 
         for (int i = 0; i < dataLength; i++) {
-            array[i][0] = (byte) (arr[i] & 0xff);
-            array[i][1] = (byte) ((arr[i] >>> 8) & 0xff);
-            array[i][2] = (byte) ((arr[i] >>> 16) & 0xff);
-            array[i][3] = (byte) ((arr[i] >>> 24) & 0xff);
+            array[i][0] = (byte) (data[i] & 0xff);
+            array[i][1] = (byte) ((data[i] >>> 8) & 0xff);
+            array[i][2] = (byte) ((data[i] >>> 16) & 0xff);
+            array[i][3] = (byte) ((data[i] >>> 24) & 0xff);
         }
 
         return array;
+    }
+
+    public static byte rotateLeft8(byte x, int k) {
+//        int value = Byte.toUnsignedInt(x);
+//        int result = (value << k) | (value >>> (8 - k));
+//        return (byte) result;
+        return (byte) ((x << k) | ((x & 0xFF) >>> (8 - k)));
     }
 
     public static byte[] generateIV(int byteSize) {
         byte[] result = new byte[byteSize];
         (new SecureRandom()).nextBytes(result);
         return result;
+    }
+
+    public static long getLongFromBytes(byte[] bytes, int startIndex) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes, startIndex, 8);
+        buffer.order(ByteOrder.BIG_ENDIAN);
+        return buffer.getLong();
+    }
+
+    public static void putLongToBytes(byte[] bytes, int startIndex, long value) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes, startIndex, 8);
+        buffer.order(ByteOrder.BIG_ENDIAN);
+        buffer.putLong(value);
     }
 }

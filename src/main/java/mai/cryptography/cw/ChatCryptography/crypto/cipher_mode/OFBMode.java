@@ -13,34 +13,31 @@ public final class OFBMode extends ACipherMode {
     }
     
     @Override
-    public byte[] encryptWithMode(byte[] text) {
-        byte[] result = new byte[text.length];
-        byte[] prevBlock = IV;
-        int blocksCount = text.length / blockLength;
-
-        for (int i = 0; i < blocksCount; i++) {
-            int idx = i * blockLength;
-            byte[] block = Arrays.copyOfRange(text, idx, idx + blockLength);
-            prevBlock = cipher.encrypt(prevBlock);
-            byte[] encryptedBlock = BitUtils.xorArrays(block, prevBlock);
-            System.arraycopy(encryptedBlock, 0, result, idx, encryptedBlock.length);
-        }
-
-        return result;
+    public byte[] encryptWithMode(byte[] data) {
+        return process(data);
     }
 
     @Override
-    public byte[] decryptWithMode(byte[] cipheredText) {
-        byte[] result = new byte[cipheredText.length];
-        byte[] prevBlock = IV;
-        int blocksCount = cipheredText.length / blockLength;
+    public byte[] decryptWithMode(byte[] data) {
+        return process(data);
+    }
 
-        for (int i = 0; i < blocksCount; i++) {
-            int idx = i * blockLength;
-            byte[] block = Arrays.copyOfRange(cipheredText, idx, idx + blockLength);
-            prevBlock = cipher.encrypt(prevBlock);
-            byte[] decryptedBlock = BitUtils.xorArrays(block, prevBlock);
-            System.arraycopy(decryptedBlock, 0, result, idx, decryptedBlock.length);
+    private byte[] process(byte[] data) {
+        byte[] result = new byte[data.length];
+        byte[] previousBlock = IV;
+
+        int length = data.length / blockLength;
+
+        for (int i = 0; i < length; ++i) {
+            int startIndex = i * blockLength;
+            byte[] block = new byte[blockLength];
+            System.arraycopy(data, startIndex, block, 0, blockLength);
+
+            byte[] encryptedPart = cipher.encrypt(previousBlock);
+            byte[] processedBlock = BitUtils.xor(block, encryptedPart);
+
+            System.arraycopy(processedBlock, 0, result, startIndex, processedBlock.length);
+            previousBlock = encryptedPart;
         }
 
         return result;

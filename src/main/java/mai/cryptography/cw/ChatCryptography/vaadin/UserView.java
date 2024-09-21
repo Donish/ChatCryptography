@@ -157,7 +157,7 @@ public class UserView extends HorizontalLayout implements BeforeEnterObserver {
             VerticalLayout roomLayout = createRoomLayout();
 
             leftLayout.add(thisUser, new Hr(), roomLayout);
-//            leftLayout.expand(thisUser); todo
+
             return leftLayout;
         }
 
@@ -167,8 +167,7 @@ public class UserView extends HorizontalLayout implements BeforeEnterObserver {
             userLayout.setAlignItems(Alignment.CENTER);
 
             Avatar avatar = new Avatar(user.getUsername());
-//            avatar.setHeight("200px"); todo
-//            avatar.setWidth("200px"); todo
+
             Span span = new Span(user.getUsername());
             MenuBar menuBar = new MenuBar();
             MenuItem menuItem = menuBar.addItem(span);

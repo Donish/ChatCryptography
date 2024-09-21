@@ -3,35 +3,30 @@ package mai.cryptography.cw.ChatCryptography.crypto.padding;
 import mai.cryptography.cw.ChatCryptography.crypto.interfaces.IPadding;
 import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Random;
 
 public final class ISO10126Padding implements IPadding {
 
     @Override
-    public byte[] makePadding(byte[] text, int requiredSizeInBytes) {
-        Random random = new Random();
-        byte[] result;
-        boolean isMultiple = text.length % requiredSizeInBytes == 0;
-        if (isMultiple) {
-            result = new byte[text.length + requiredSizeInBytes];
-        } else {
-            result = new byte[text.length + (requiredSizeInBytes - text.length % requiredSizeInBytes)];
-        }
-        int paddedBytes = requiredSizeInBytes - (text.length % requiredSizeInBytes);
-        System.arraycopy(text, 0, result, 0, text.length);
-        byte[] randomBytes = new byte[paddedBytes];
-        random.nextBytes(randomBytes);
-        System.arraycopy(randomBytes, 0, result, text.length, randomBytes.length);
-        result[result.length - 1] = (byte) paddedBytes;
+    public byte[] makePadding(byte[] data, int blockSize) {
+        int paddingLength = blockSize - (data.length % blockSize);
 
-        return result;
+        byte[] paddingBytes = new byte[paddingLength];
+        new SecureRandom().nextBytes(paddingBytes);
+        paddingBytes[paddingLength - 1] = (byte) paddingLength;
+
+        byte[] paddedInput = new byte[data.length + paddingLength];
+        System.arraycopy(data, 0, paddedInput, 0, data.length);
+        System.arraycopy(paddingBytes, 0, paddedInput, data.length, paddingLength);
+
+        return paddedInput;
     }
 
     @Override
-    public byte[] removePadding(byte[] text) {
-        int count = BitUtils.getUnsignedByte(text[text.length - 1]);
-        return Arrays.copyOf(text, text.length - count);
+    public byte[] removePadding(byte[] data) {
+        return Arrays.copyOf(data, data.length - data[data.length - 1]);
     }
 
 }

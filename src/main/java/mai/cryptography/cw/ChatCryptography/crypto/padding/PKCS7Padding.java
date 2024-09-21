@@ -8,28 +8,18 @@ import java.util.Arrays;
 public final class PKCS7Padding implements IPadding {
 
     @Override
-    public byte[] makePadding(byte[] text, int requiredSizeInBytes) {
-        byte[] result;
-        boolean isMultiple = text.length % requiredSizeInBytes == 0;
-        if (isMultiple) {
-            result = new byte[text.length + requiredSizeInBytes];
-        } else {
-            result = new byte[text.length + (requiredSizeInBytes - text.length % requiredSizeInBytes)];
-        }
-        int paddedBytes = requiredSizeInBytes - (text.length % requiredSizeInBytes);
-        System.arraycopy(text, 0, result, 0, text.length);
+    public byte[] makePadding(byte[] data, int blockSize) {
+        int paddingLength = blockSize - (data.length % blockSize);
 
-        for (int i = text.length; i < result.length; i++) {
-            result[i] = (byte) paddedBytes;
-        }
-
-        return result;
+        byte[] paddedInput = new byte[data.length + paddingLength];
+        System.arraycopy(data, 0, paddedInput, 0, data.length);
+        Arrays.fill(paddedInput, data.length, paddedInput.length, (byte) paddingLength);
+        return paddedInput;
     }
 
     @Override
-    public byte[] removePadding(byte[] text) {
-        int count = BitUtils.getUnsignedByte(text[text.length - 1]);
-        return Arrays.copyOf(text, text.length - count);
+    public byte[] removePadding(byte[] data) {
+        return Arrays.copyOf(data, data.length - data[data.length - 1]);
     }
 
 }

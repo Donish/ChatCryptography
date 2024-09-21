@@ -13,34 +13,31 @@ public final class PCBCMode extends ACipherMode {
     }
 
     @Override
-    public byte[] encryptWithMode(byte[] text) {
-        byte[] result = new byte[text.length];
-        byte[] prevBlock = IV;
-        int blocksCount = text.length / blockLength;
-
-        for (int i = 0; i < blocksCount; i++) {
-            int idx = i * blockLength;
-            byte[] block = Arrays.copyOfRange(text, idx, idx + blockLength);
-            byte[] encryptedBlock = cipher.encrypt(BitUtils.xorArrays(prevBlock, block));
-            System.arraycopy(encryptedBlock, 0, result, idx, encryptedBlock.length);
-            prevBlock = BitUtils.xorArrays(block, encryptedBlock);
-        }
-
-        return result;
+    public byte[] encryptWithMode(byte[] data) {
+        return process(data, true);
     }
 
     @Override
-    public byte[] decryptWithMode(byte[] cipheredText) {
-        byte[] result = new byte[cipheredText.length];
-        byte[] prevBlock = IV;
-        int blocksCount = cipheredText.length / blockLength;
+    public byte[] decryptWithMode(byte[] data) {
+        return process(data, false);
+    }
 
-        for (int i = 0; i < blocksCount; i++) {
-            int idx = i * blockLength;
-            byte[] block = Arrays.copyOfRange(cipheredText, idx, idx + blockLength);
-            byte[] decryptedBlock = BitUtils.xorArrays(cipher.decrypt(block), prevBlock);
-            System.arraycopy(decryptedBlock, 0, result, idx, decryptedBlock.length);
-            prevBlock = BitUtils.xorArrays(block, decryptedBlock);
+    private byte[] process(byte[] data, boolean isEncrypt) {
+        byte[] result = new byte[data.length];
+        byte[] blockForXor = IV;
+
+        int length = data.length / blockLength;
+
+        for (int i = 0; i < length; ++i) {
+            int startIndex = i * blockLength;
+            byte[] block = new byte[blockLength];
+            System.arraycopy(data, startIndex, block, 0, blockLength);
+
+            byte[] processedBlock = isEncrypt
+                    ? cipher.encrypt(BitUtils.xor(block, blockForXor))
+                    : BitUtils.xor(blockForXor, cipher.decrypt(block));
+            System.arraycopy(processedBlock, 0, result, startIndex, processedBlock.length);
+            blockForXor = BitUtils.xor(processedBlock, block);
         }
 
         return result;

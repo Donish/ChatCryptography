@@ -4,8 +4,12 @@ import mai.cryptography.cw.ChatCryptography.crypto.interfaces.ACipherMode;
 import mai.cryptography.cw.ChatCryptography.crypto.interfaces.ICipher;
 import mai.cryptography.cw.ChatCryptography.crypto.utils.BitUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 public final class CBCMode extends ACipherMode {
@@ -15,34 +19,58 @@ public final class CBCMode extends ACipherMode {
     }
 
     @Override
-    public byte[] encryptWithMode(byte[] text) {
-        byte[] prevBlock = IV;
-        byte[] result = new byte[text.length];
-        int blocksCount = text.length / blockLength;
+    public byte[] encryptWithMode(byte[] data) {
+        byte[] result = new byte[data.length];
+        byte[] previousBlock = IV;
 
-        for (int i = 0; i < blocksCount; i++) {
-            int idx = i * blockLength;
-            byte[] block = Arrays.copyOfRange(text, idx, idx + blockLength);
-            byte[] encryptedBlock = cipher.encrypt(BitUtils.xorArrays(prevBlock, block));
-            System.arraycopy(encryptedBlock, 0, result, idx, encryptedBlock.length);
-            prevBlock = encryptedBlock;
+        int length = data.length / blockLength;
+
+        for (int i = 0; i < length; ++i) {
+            int startIndex = i * blockLength;
+            byte[] block = new byte[blockLength];
+            System.arraycopy(data, startIndex, block, 0, blockLength);
+
+            byte[] processedBlock = cipher.encrypt(BitUtils.xor(block, previousBlock));
+
+            System.arraycopy(processedBlock, 0, result, startIndex, processedBlock.length);
+            previousBlock = processedBlock;
         }
 
         return result;
     }
 
     @Override
-    public byte[] decryptWithMode(byte[] cipheredText) {
-        byte[] result = new byte[cipheredText.length];
-        IntStream.range(0, cipheredText.length / blockLength)
-                .parallel()
-                .forEach(i -> {
-                    int idx = i * blockLength;
-                    byte[] prevBlock = (i == 0) ? IV : Arrays.copyOfRange(cipheredText, idx - blockLength, idx);
-                    byte[] block = Arrays.copyOfRange(cipheredText, idx, idx + blockLength);
-                    byte[] decryptedBlock = BitUtils.xorArrays(prevBlock, cipher.decrypt(block));
-                    System.arraycopy(decryptedBlock, 0, result, idx, decryptedBlock.length);
-                });
+    public byte[] decryptWithMode(byte[] data) {
+        byte[] result = new byte[data.length];
+
+        int numBlocks = data.length / blockLength;
+        List<Future<?>> futures = new ArrayList<>(numBlocks);
+
+        for (int i = 0; i < numBlocks; ++i) {
+            final int index = i;
+            futures.add(executorService.submit(() -> {
+                byte[] previousBlock = (index == 0) ? IV : new byte[blockLength];
+                if (index != 0) {
+                    System.arraycopy(data, (index - 1) * blockLength, previousBlock, 0, blockLength);
+                }
+
+                int startIndex = index * blockLength;
+                byte[] currentBlock = new byte[blockLength];
+                System.arraycopy(data, startIndex, currentBlock, 0, blockLength);
+
+                byte[] processedBlock = BitUtils.xor(previousBlock, cipher.decrypt(currentBlock));
+                System.arraycopy(processedBlock, 0, result, startIndex, processedBlock.length);
+            }));
+        }
+
+        for (var future : futures) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         return result;
     }
 }

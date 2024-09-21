@@ -78,20 +78,23 @@ public class Type3FeistelNetwork implements ICipher {
     }
 
     @Override
-    public byte[] encrypt(byte[] text) {
-        int A = BitUtils.byteArrToInt(text, 0) + roundKeys[0];
-        int B = BitUtils.byteArrToInt(text, 4) + roundKeys[1];
-        int C = BitUtils.byteArrToInt(text, 8) + roundKeys[2];
-        int D = BitUtils.byteArrToInt(text, 12) + roundKeys[3];
+    public byte[] encrypt(byte[] in) {
+        int A = BitUtils.byteArrToInt(in, 0) + roundKeys[0];
+        int B = BitUtils.byteArrToInt(in, 4) + roundKeys[1];
+        int C = BitUtils.byteArrToInt(in, 8) + roundKeys[2];
+        int D = BitUtils.byteArrToInt(in, 12) + roundKeys[3];
 
         for (int i = 0; i < 8; i++) {
-            B = (B ^ S[A & 0xFF]) + S[BitUtils.rCircularShift(A, 8) & 0xFF + 256];
-            C = C + S[BitUtils.rCircularShift(A, 16) & 0xFF];
-            D = D ^ S[(BitUtils.rCircularShift(A, 24) & 0xFF) + 256];
-            A = BitUtils.rCircularShift(A, 24);
+            B = (B ^ Type3FeistelNetwork.S[A & 0xff]) + Type3FeistelNetwork.S[(BitUtils.rCircularShift(A, 8) & 0xff) + 256];
+            C = C + Type3FeistelNetwork.S[BitUtils.rCircularShift(A, 16) & 0xff];
+            D = D ^ Type3FeistelNetwork.S[(BitUtils.rCircularShift(A, 24) & 0xff) + 256];
 
-            if (i == 1 || i == 5) A += B;
-            else if (i == 0 || i == 4) A += D;
+            A = BitUtils.rCircularShift(A, 24);
+            if (i == 1 || i == 5) {
+                A += B;
+            } else if (i == 0 || i == 4) {
+                A += D;
+            }
 
             int tmp = A;
             A = B;
@@ -113,8 +116,8 @@ public class Type3FeistelNetwork implements ICipher {
             L = BitUtils.byteArrToInt(data, 0);
             M = BitUtils.byteArrToInt(data, 4);
             R = BitUtils.byteArrToInt(data, 8);
-            C = C + M;
 
+            C = C + M;
             if (i < 8) {
                 B += L;
                 D ^= R;
@@ -131,12 +134,15 @@ public class Type3FeistelNetwork implements ICipher {
         }
 
         for (int i = 0; i < 8; i++) {
-            if (i == 3 || i == 7) A -= B;
-            else if (i == 2 || i == 6) A -= D;
+            if (i == 3 || i == 7) {
+                A -= B;
+            } else if (i == 2 || i == 6) {
+                A -= D;
+            }
 
-            B = B ^ S[(A & 0xFF) + 256];
-            C = C - S[BitUtils.lCircularShift(A, 8) & 0xFF];
-            D = (D - S[BitUtils.lCircularShift(A, 16) & 0xFF] + 256) ^ (S[BitUtils.lCircularShift(A, 24) & 0xFF]);
+            B = B ^ Type3FeistelNetwork.S[(A & 0xff) + 256];
+            C = C - Type3FeistelNetwork.S[BitUtils.lCircularShift(A, 8) & 0xff];
+            D = (D - Type3FeistelNetwork.S[(BitUtils.lCircularShift(A, 16) & 0xff) + 256]) ^ (Type3FeistelNetwork.S[BitUtils.lCircularShift(A, 24) & 0xff]);
 
             int tmp = BitUtils.lCircularShift(A, 24);
             A = B;
@@ -150,20 +156,21 @@ public class Type3FeistelNetwork implements ICipher {
         data[1] = B - roundKeys[37];
         data[2] = C - roundKeys[38];
         data[3] = D - roundKeys[39];
-        byte[] encrypted = new byte[text.length];
-        for (int i = 0; i < text.length; i++) {
-            encrypted[i] = (byte) (data[i / 4] >>> ((i % 4) * 8) & 0xFF);
+
+        byte[] encoded = new byte[in.length];
+        for (int i = 0; i < in.length; i++) {
+            encoded[i] = (byte) (data[i / 4] >>> ((i % 4) * 8) & 0xff);
         }
 
-        return encrypted;
+        return encoded;
     }
 
     @Override
-    public byte[] decrypt(byte[] text) {
-        int A = BitUtils.byteArrToInt(text, 0) + roundKeys[36];
-        int B = BitUtils.byteArrToInt(text, 4) + roundKeys[37];
-        int C = BitUtils.byteArrToInt(text, 8) + roundKeys[38];
-        int D = BitUtils.byteArrToInt(text, 12) + roundKeys[39];
+    public byte[] decrypt(byte[] in) {
+        int A = BitUtils.byteArrToInt(in, 0) + roundKeys[36];
+        int B = BitUtils.byteArrToInt(in, 4) + roundKeys[37];
+        int C = BitUtils.byteArrToInt(in, 8) + roundKeys[38];
+        int D = BitUtils.byteArrToInt(in, 12) + roundKeys[39];
 
         for (int i = 7; i >= 0; i--) {
             int tmp = BitUtils.rCircularShift(D, 24);
@@ -172,9 +179,9 @@ public class Type3FeistelNetwork implements ICipher {
             B = A;
             A = tmp;
 
-            D = (D ^ S[BitUtils.lCircularShift(A, 24) & 0xFF]) + (S[(BitUtils.lCircularShift(A, 16) & 0xFF) + 256]);
-            C = C + S[BitUtils.lCircularShift(A, 8) & 0xFF];
-            B = B ^ S[(A & 0xff) + 256];
+            D = (D ^ Type3FeistelNetwork.S[BitUtils.lCircularShift(A, 24) & 0xff]) + (Type3FeistelNetwork.S[(BitUtils.lCircularShift(A, 16) & 0xff) + 256]);
+            C = C + Type3FeistelNetwork.S[BitUtils.lCircularShift(A, 8) & 0xff];
+            B = B ^ Type3FeistelNetwork.S[(A & 0xff) + 256];
 
             if (i == 3 || i == 7) {
                 A += B;
@@ -227,9 +234,9 @@ public class Type3FeistelNetwork implements ICipher {
             }
 
             A = BitUtils.lCircularShift(A, 24);
-            D = D ^ S[(BitUtils.rCircularShift(A, 24) & 0xff) + 256];
-            C = C - S[BitUtils.rCircularShift(A, 16) & 0xff];
-            B = (B - S[(BitUtils.rCircularShift(A, 8) & 0xff) + 256]) ^ (S[A & 0xff]);
+            D = D ^ Type3FeistelNetwork.S[(BitUtils.rCircularShift(A, 24) & 0xff) + 256];
+            C = C - Type3FeistelNetwork.S[BitUtils.rCircularShift(A, 16) & 0xff];
+            B = (B - Type3FeistelNetwork.S[(BitUtils.rCircularShift(A, 8) & 0xff) + 256]) ^ (Type3FeistelNetwork.S[A & 0xff]);
         }
 
         int[] data = new int[4];
@@ -238,12 +245,12 @@ public class Type3FeistelNetwork implements ICipher {
         data[2] = C - roundKeys[2];
         data[3] = D - roundKeys[3];
 
-        byte[] decrypted = new byte[text.length];
-        for (int i = 0; i < text.length; i++) {
-            decrypted[i] = (byte) (data[i / 4] >>> ((i % 4) * 8) & 0xff);
+        byte[] decoded = new byte[in.length];
+        for (int i = 0; i < in.length; i++) {
+            decoded[i] = (byte) (data[i / 4] >>> ((i % 4) * 8) & 0xff);
         }
 
-        return decrypted;
+        return decoded;
     }
 
     @Override
